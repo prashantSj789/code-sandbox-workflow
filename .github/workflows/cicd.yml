@@ -71,36 +71,40 @@ jobs:
 
           echo "Generated Sandbox ID (Previous): $SANDBOX_ID"
           echo "::set-output name=prev_sandbox_id::$SANDBOX_ID"
-
-      - name: Create CodeSandbox with New Content
-        id: create_new_sandbox
-        run: |
-          HTML_CONTENT=$(cat new_index.html | tr '\n' ' ')
-          CSS_CONTENT=$(cat new_style.css | tr '\n' ' ')
-          JS_CONTENT=$(cat new_app.js | tr '\n' ' ')
-
-          PAYLOAD=$(jq -n \
-            --arg html "$HTML_CONTENT" \
-            --arg css "$CSS_CONTENT" \
-            --arg js "$JS_CONTENT" \
-            '{ files: { "index.html": { content: $html }, "style.css": { content: $css }, "app.js": { content: $js } }')
-
-          echo "Payload for New Content: $PAYLOAD"
-
-          RESPONSE=$(curl -s -X POST 'https://codesandbox.io/api/v1/sandboxes/define?json=1' \
-            -H "Content-Type: application/json" \
-            -d "$PAYLOAD")
-
-          echo "Response from CodeSandbox (New): $RESPONSE"
-          
-          SANDBOX_ID=$(echo "$RESPONSE" | jq -r '.sandbox_id')
-          if [[ "$SANDBOX_ID" == "null" ]]; then
-            echo "Error: CodeSandbox ID is null. Check the response for more details."
-            exit 1
-          fi
-
-          echo "Generated Sandbox ID (New): $SANDBOX_ID"
-          echo "::set-output name=new_sandbox_id::$SANDBOX_ID"
+          - name: Create CodeSandbox with New Content
+          id: create_new_sandbox
+          run: |
+            # Load the new file contents without line breaks
+            HTML_CONTENT=$(cat new_index.html | tr '\n' ' ')
+            CSS_CONTENT=$(cat new_style.css | tr '\n' ' ')
+            JS_CONTENT=$(cat new_app.js | tr '\n' ' ')
+        
+            # Construct JSON payload with `jq`
+            PAYLOAD=$(jq -n \
+              --arg html "$HTML_CONTENT" \
+              --arg css "$CSS_CONTENT" \
+              --arg js "$JS_CONTENT" \
+              '{ files: { "index.html": { content: $html }, "style.css": { content: $css }, "app.js": { content: $js } } }'
+            )
+        
+            echo "Payload for New Content: $PAYLOAD"
+        
+            # Send the payload to CodeSandbox
+            RESPONSE=$(curl -s -X POST 'https://codesandbox.io/api/v1/sandboxes/define?json=1' \
+              -H "Content-Type: application/json" \
+              -d "$PAYLOAD")
+        
+            echo "Response from CodeSandbox (New): $RESPONSE"
+        
+            # Extract sandbox_id from the response
+            SANDBOX_ID=$(echo "$RESPONSE" | jq -r '.sandbox_id')
+            if [[ "$SANDBOX_ID" == "null" ]]; then
+              echo "Error: CodeSandbox ID is null. Check the response for more details."
+              exit 1
+            fi
+        
+            echo "Generated Sandbox ID (New): $SANDBOX_ID"
+            echo "::set-output name=new_sandbox_id::$SANDBOX_ID"
 
       - name: Display CodeSandbox URLs
         run: |
