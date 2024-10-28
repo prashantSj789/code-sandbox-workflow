@@ -70,27 +70,41 @@ jobs:
         if: env.changes_detected == 'true'
         id: create_new_sandbox
         run: |
-          HTML_CONTENT=$(cat new_index.html | tr '\n' ' ')
-          CSS_CONTENT=$(cat new_style.css | tr '\n' ' ')
-          JS_CONTENT=$(cat new_app.js | tr '\n' ' ')
+          # Load the new file contents without line breaks
+          HTML_CONTENT=$(tr '\n' ' ' < new_index.html)
+          CSS_CONTENT=$(tr '\n' ' ' < new_style.css)
+          JS_CONTENT=$(tr '\n' ' ' < new_app.js)
           
+          # Debugging: Print the contents
+          echo "HTML Content: $HTML_CONTENT"
+          echo "CSS Content: $CSS_CONTENT"
+          echo "JS Content: $JS_CONTENT"
+
+          # Construct JSON payload with `jq`
           PAYLOAD=$(jq -n \
             --arg html "$HTML_CONTENT" \
             --arg css "$CSS_CONTENT" \
             --arg js "$JS_CONTENT" \
-            '{ files: { "index.html": { content: $html }, "style.css": { content: $css }, "app.js": { content: $js } }')
+            '{ files: { "index.html": { content: $html }, "style.css": { content: $css }, "app.js": { content: $js } } }')
 
+          # Debugging: Print the payload
+          echo "Payload for New Content: $PAYLOAD"
+
+          # Send the payload to CodeSandbox
           RESPONSE=$(curl -s -X POST 'https://codesandbox.io/api/v1/sandboxes/define?json=1' \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD")
 
+          # Extract sandbox_id from the response
           SANDBOX_ID=$(echo "$RESPONSE" | jq -r '.sandbox_id')
           if [[ "$SANDBOX_ID" == "null" ]]; then
             echo "Error: CodeSandbox ID is null for New Content."
+            echo "Response: $RESPONSE"  # Print the response for debugging
             exit 1
           fi
 
           echo "new_sandbox_id=$SANDBOX_ID" >> $GITHUB_ENV
+
 
       # Optional Step: Output the Sandbox URLs
       - name: Display CodeSandbox URLs
