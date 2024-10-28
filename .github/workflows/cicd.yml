@@ -1,3 +1,4 @@
+
 name: Generate CodeSandbox on Changes
 
 on:
@@ -12,24 +13,19 @@ jobs:
     
       - name: Checkout code
         uses: actions/checkout@v2
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
         with:
-          node-version: '14'
+          fetch-depth: 2  # Fetch the last two commits
 
-      # Step 1: Capture the previous and current commit files
-      - name: Copy previous and current files
+      # Step 1: Capture the previous commit files
+      - name: Capture previous and current files
         run: |
-          git checkout HEAD^
           cp src/index.html prev_index.html || echo "" > prev_index.html
           cp src/style.css prev_style.css || echo "" > prev_style.css
           cp src/app.js prev_app.js || echo "" > prev_app.js
-          
-          git checkout -
-          cp src/index.html new_index.html || echo "" > new_index.html
-          cp src/style.css new_style.css || echo "" > new_style.css
-          cp src/app.js new_app.js || echo "" > new_app.js
+
+          git show HEAD^:src/index.html > new_index.html || echo "" > new_index.html
+          git show HEAD^:src/style.css > new_style.css || echo "" > new_style.css
+          git show HEAD^:src/app.js > new_app.js || echo "" > new_app.js
 
       # Step 2: Check for differences
       - name: Check for file differences
