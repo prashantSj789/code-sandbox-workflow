@@ -1,3 +1,4 @@
+
 name: Generate CodeSandbox for Previous and New Commits
 
 on:
@@ -44,9 +45,9 @@ jobs:
       - name: Create CodeSandbox with Previous Content
         id: create_prev_sandbox
         run: |
-          HTML_CONTENT=$(cat prev_index.html | jq -Rs .)
-          CSS_CONTENT=$(cat prev_style.css | jq -Rs .)
-          JS_CONTENT=$(cat prev_app.js | jq -Rs .)
+          HTML_CONTENT=$(cat prev_index.html | tr '\n' ' ')
+          CSS_CONTENT=$(cat prev_style.css | tr '\n' ' ')
+          JS_CONTENT=$(cat prev_app.js | tr '\n' ' ')
 
           PAYLOAD=$(jq -n \
             --arg html "$HTML_CONTENT" \
@@ -74,15 +75,15 @@ jobs:
       - name: Create CodeSandbox with New Content
         id: create_new_sandbox
         run: |
-          HTML_CONTENT=$(cat new_index.html | jq -Rs .)
-          CSS_CONTENT=$(cat new_style.css | jq -Rs .)
-          JS_CONTENT=$(cat new_app.js | jq -Rs .)
+          HTML_CONTENT=$(cat new_index.html | tr '\n' ' ')
+          CSS_CONTENT=$(cat new_style.css | tr '\n' ' ')
+          JS_CONTENT=$(cat new_app.js | tr '\n' ' ')
 
           PAYLOAD=$(jq -n \
             --arg html "$HTML_CONTENT" \
             --arg css "$CSS_CONTENT" \
             --arg js "$JS_CONTENT" \
-            '{ files: { "index.html": { content: $html }, "style.css": { content: $css }, "app.js": { content: $js } } }')
+            '{ files: { "index.html": { content: $html }, "style.css": { content: $css }, "app.js": { content: $js } }')
 
           echo "Payload for New Content: $PAYLOAD"
 
