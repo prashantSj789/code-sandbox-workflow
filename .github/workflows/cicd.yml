@@ -18,10 +18,19 @@ jobs:
       - name: Get Previous File Contents
         id: prev_content
         run: |
-          # Retrieve the contents of index.html, style.css, and app.js from the previous commit
-          PREV_INDEX_HTML=$(git show "${{ github.event.before }}:src/index.html")
-          PREV_STYLE_CSS=$(git show "${{ github.event.before }}:src/style.css")
-          PREV_APP_JS=$(git show "${{ github.event.before }}:src/app.js")
+          # Function to get file content if it exists in the previous commit
+          get_file_content() {
+            if git cat-file -e "${{ github.event.before }}:$1" 2>/dev/null; then
+              git show "${{ github.event.before }}:$1"
+            else
+              echo ""
+            fi
+          }
+
+          # Retrieve the contents of index.html, style.css, and app.js from the previous commit, if they exist
+          PREV_INDEX_HTML=$(get_file_content "src/index.html")
+          PREV_STYLE_CSS=$(get_file_content "src/style.css")
+          PREV_APP_JS=$(get_file_content "src/app.js")
           
           echo "::set-output name=prev_index_html::$PREV_INDEX_HTML"
           echo "::set-output name=prev_style_css::$PREV_STYLE_CSS"
@@ -31,9 +40,9 @@ jobs:
         id: new_content
         run: |
           # Retrieve the contents of index.html, style.css, and app.js from the current commit
-          NEW_INDEX_HTML=$(cat src/index.html)
-          NEW_STYLE_CSS=$(cat src/style.css)
-          NEW_APP_JS=$(cat src/app.js)
+          NEW_INDEX_HTML=$(cat src/index.html || echo "")
+          NEW_STYLE_CSS=$(cat src/style.css || echo "")
+          NEW_APP_JS=$(cat src/app.js || echo "")
 
           echo "::set-output name=new_index_html::$NEW_INDEX_HTML"
           echo "::set-output name=new_style_css::$NEW_STYLE_CSS"
