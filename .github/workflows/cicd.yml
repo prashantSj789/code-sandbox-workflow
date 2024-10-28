@@ -48,11 +48,13 @@ jobs:
       - name: Create CodeSandbox with New Content
         id: create_new_sandbox
         run: |
-            # Prepare JSON payload for current commit files using content from temporary files
-            PAYLOAD=$(jq -n --slurpfile html new_index.html \
-                              --slurpfile css new_style.css \
-                              --slurpfile js new_app.js \
-                        '{ files: { "index.html": { content: ($html[0]) }, "style.css": { content: ($css[0]) }, "app.js": { content: ($js[0]) } } }')
+            # Read and escape file content as JSON-safe strings
+            HTML_CONTENT=$(cat new_index.html | sed 's/"/\\"/g' | tr '\n' '\\n')
+            CSS_CONTENT=$(cat new_style.css | sed 's/"/\\"/g' | tr '\n' '\\n')
+            JS_CONTENT=$(cat new_app.js | sed 's/"/\\"/g' | tr '\n' '\\n')
+        
+            # Construct JSON payload manually
+            PAYLOAD=$(echo "{\"files\": {\"index.html\": {\"content\": \"$HTML_CONTENT\"}, \"style.css\": {\"content\": \"$CSS_CONTENT\"}, \"app.js\": {\"content\": \"$JS_CONTENT\"}}}")
         
             # Send the payload to CodeSandbox
             RESPONSE=$(curl -s -X POST 'https://codesandbox.io/api/v1/sandboxes/define?json=1' \
@@ -63,6 +65,7 @@ jobs:
             SANDBOX_ID=$(echo "$RESPONSE" | jq -r '.sandbox_id')
             echo "Generated Sandbox ID (New): $SANDBOX_ID"
             echo "::set-output name=new_sandbox_id::$SANDBOX_ID"
+        
         
 
       - name: Display CodeSandbox URLs
