@@ -45,43 +45,24 @@ jobs:
           cp src/style.css new_style.css || echo "" > new_style.css
           cp src/app.js new_app.js || echo "" > new_app.js
 
-      - name: Create CodeSandbox with Previous Content
-        id: create_prev_sandbox
-        run: |
-          # Prepare JSON payload for previous commit files using content from temporary files
-          PAYLOAD=$(jq -n --rawfile html prev_index.html \
-                            --rawfile css prev_style.css \
-                            --rawfile js prev_app.js \
-                    '{ files: { "index.html": { content: $html }, "style.css": { content: $css }, "app.js": { content: $js } } }')
-
-          # Send the payload to CodeSandbox
-          RESPONSE=$(curl -s -X POST 'https://codesandbox.io/api/v1/sandboxes/define?json=1' \
-            -H "Content-Type: application/json" \
-            -d "$PAYLOAD")
-          
-          # Extract sandbox_id from the response
-          SANDBOX_ID=$(echo "$RESPONSE" | jq -r '.sandbox_id')
-          echo "Generated Sandbox ID (Previous): $SANDBOX_ID"
-          echo "::set-output name=prev_sandbox_id::$SANDBOX_ID"
-
       - name: Create CodeSandbox with New Content
         id: create_new_sandbox
         run: |
-          # Prepare JSON payload for current commit files using content from temporary files
-          PAYLOAD=$(jq -n --rawfile html new_index.html \
-                            --rawfile css new_style.css \
-                            --rawfile js new_app.js \
-                    '{ files: { "index.html": { content: $html }, "style.css": { content: $css }, "app.js": { content: $js } }')
-
-          # Send the payload to CodeSandbox
-          RESPONSE=$(curl -s -X POST 'https://codesandbox.io/api/v1/sandboxes/define?json=1' \
-            -H "Content-Type: application/json" \
-            -d "$PAYLOAD")
-          
-          # Extract sandbox_id from the response
-          SANDBOX_ID=$(echo "$RESPONSE" | jq -r '.sandbox_id')
-          echo "Generated Sandbox ID (New): $SANDBOX_ID"
-          echo "::set-output name=new_sandbox_id::$SANDBOX_ID"
+            # Prepare JSON payload for current commit files using content from temporary files
+            PAYLOAD=$(jq -n --argfile html new_index.html \
+                              --argfile css new_style.css \
+                              --argfile js new_app.js \
+                        '{ files: { "index.html": { content: $html }, "style.css": { content: $css }, "app.js": { content: $js } } }')
+        
+            # Send the payload to CodeSandbox
+            RESPONSE=$(curl -s -X POST 'https://codesandbox.io/api/v1/sandboxes/define?json=1' \
+              -H "Content-Type: application/json" \
+              -d "$PAYLOAD")
+            
+            # Extract sandbox_id from the response
+            SANDBOX_ID=$(echo "$RESPONSE" | jq -r '.sandbox_id')
+            echo "Generated Sandbox ID (New): $SANDBOX_ID"
+            echo "::set-output name=new_sandbox_id::$SANDBOX_ID"
 
       - name: Display CodeSandbox URLs
         run: |
