@@ -1,117 +1,102 @@
-
-name: Generate CodeSandbox for Previous and New Commits
+name: CodeSandbox Workflow
 
 on:
   push:
-    paths:
-      - 'src/app.js'
-      - 'src/index.html'
-      - 'src/style.css'
+    branches:
+      - main
 
 jobs:
-  generate-codesandbox:
+  create-sandbox:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - name: Get Previous File Contents
-        id: prev_content
+      - name: Setup jq
+        run: sudo apt-get install jq
+
+      - name: Copy Files for Current and Previous Content
         run: |
-          echo "" > prev_index.html
-          echo "" > prev_style.css
-          echo "" > prev_app.js
-
-          get_file_content() {
-            if git cat-file -e "${{ github.event.before }}:$1" 2>/dev/null; then
-              git show "${{ github.event.before }}:$1" > $2
-            else
-              echo "" > $2
-            fi
-          }
-
-          get_file_content "src/index.html" "prev_index.html"
-          get_file_content "src/style.css" "prev_style.css"
-          get_file_content "src/app.js" "prev_app.js"
-
-      - name: Get New File Contents
-        id: new_content
-        run: |
+          # Copy files for the new content, create empty files if not found
           cp src/index.html new_index.html || echo "" > new_index.html
           cp src/style.css new_style.css || echo "" > new_style.css
           cp src/app.js new_app.js || echo "" > new_app.js
 
-          - name: Create CodeSandbox with Previous Content
-          id: create_prev_sandbox
-          run: |
-            # Load the previous file contents without line breaks
-            HTML_CONTENT=$(cat prev_index.html | tr '\n' ' ')
-            CSS_CONTENT=$(cat prev_style.css | tr '\n' ' ')
-            JS_CONTENT=$(cat prev_app.js | tr '\n' ' ')
+          # Copy files for the previous content, create empty files if not found
+          cp src/index.html prev_index.html || echo "" > prev_index.html
+          cp src/style.css prev_style.css || echo "" > prev_style.css
+          cp src/app.js prev_app.js || echo "" > prev_app.js
+
+      - name: Create CodeSandbox with Previous Content
+        id: create_prev_sandbox
+        run: |
+          # Load the previous file contents without line breaks
+          HTML_CONTENT=$(cat prev_index.html | tr '\n' ' ')
+          CSS_CONTENT=$(cat prev_style.css | tr '\n' ' ')
+          JS_CONTENT=$(cat prev_app.js | tr '\n' ' ')
         
-            # Construct JSON payload with `jq`
-            PAYLOAD=$(jq -n \
-              --arg html "$HTML_CONTENT" \
-              --arg css "$CSS_CONTENT" \
-              --arg js "$JS_CONTENT" \
-              '{ files: { "index.html": { content: $html }, "style.css": { content: $css }, "app.js": { content: $js } } }')
+          # Construct JSON payload with `jq`
+          PAYLOAD=$(jq -n \
+            --arg html "$HTML_CONTENT" \
+            --arg css "$CSS_CONTENT" \
+            --arg js "$JS_CONTENT" \
+            '{ files: { "index.html": { content: $html }, "style.css": { content: $css }, "app.js": { content: $js } } }')
         
-            echo "Payload for Previous Content: $PAYLOAD"
+          echo "Payload for Previous Content: $PAYLOAD"
         
-            # Send the payload to CodeSandbox
-            RESPONSE=$(curl -s -X POST 'https://codesandbox.io/api/v1/sandboxes/define?json=1' \
-              -H "Content-Type: application/json" \
-              -d "$PAYLOAD")
+          # Send the payload to CodeSandbox
+          RESPONSE=$(curl -s -X POST 'https://codesandbox.io/api/v1/sandboxes/define?json=1' \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
         
-            echo "Response from CodeSandbox (Previous): $RESPONSE"
+          echo "Response from CodeSandbox (Previous): $RESPONSE"
         
-            # Extract sandbox_id from the response
-            SANDBOX_ID=$(echo "$RESPONSE" | jq -r '.sandbox_id')
-            if [[ "$SANDBOX_ID" == "null" ]]; then
-              echo "Error: CodeSandbox ID is null. Check the response for more details."
-              exit 1
-            fi
+          # Extract sandbox_id from the response
+          SANDBOX_ID=$(echo "$RESPONSE" | jq -r '.sandbox_id')
+          if [[ "$SANDBOX_ID" == "null" ]]; then
+            echo "Error: CodeSandbox ID is null. Check the response for more details."
+            exit 1
+          fi
         
-            echo "Generated Sandbox ID (Previous): $SANDBOX_ID"
-            echo "prev_sandbox_id=$SANDBOX_ID" >> $GITHUB_ENV  # Use environment file
-        
+          echo "Generated Sandbox ID (Previous): $SANDBOX_ID"
+          echo "prev_sandbox_id=$SANDBOX_ID" >> $GITHUB_ENV  # Use environment file
+
       - name: Create CodeSandbox with New Content
         id: create_new_sandbox
         run: |
-            # Load the new file contents without line breaks
-            HTML_CONTENT=$(cat new_index.html | tr '\n' ' ')
-            CSS_CONTENT=$(cat new_style.css | tr '\n' ' ')
-            JS_CONTENT=$(cat new_app.js | tr '\n' ' ')
+          # Load the new file contents without line breaks
+          HTML_CONTENT=$(cat new_index.html | tr '\n' ' ')
+          CSS_CONTENT=$(cat new_style.css | tr '\n' ' ')
+          JS_CONTENT=$(cat new_app.js | tr '\n' ' ')
         
-            # Construct JSON payload with `jq`
-            PAYLOAD=$(jq -n \
-              --arg html "$HTML_CONTENT" \
-              --arg css "$CSS_CONTENT" \
-              --arg js "$JS_CONTENT" \
-              '{ files: { "index.html": { content: $html }, "style.css": { content: $css }, "app.js": { content: $js } } }')
+          # Construct JSON payload with `jq`
+          PAYLOAD=$(jq -n \
+            --arg html "$HTML_CONTENT" \
+            --arg css "$CSS_CONTENT" \
+            --arg js "$JS_CONTENT" \
+            '{ files: { "index.html": { content: $html }, "style.css": { content: $css }, "app.js": { content: $js } } }')
         
-            echo "Payload for New Content: $PAYLOAD"
+          echo "Payload for New Content: $PAYLOAD"
         
-            # Send the payload to CodeSandbox
-            RESPONSE=$(curl -s -X POST 'https://codesandbox.io/api/v1/sandboxes/define?json=1' \
-              -H "Content-Type: application/json" \
-              -d "$PAYLOAD")
+          # Send the payload to CodeSandbox
+          RESPONSE=$(curl -s -X POST 'https://codesandbox.io/api/v1/sandboxes/define?json=1' \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
         
-            echo "Response from CodeSandbox (New): $RESPONSE"
+          echo "Response from CodeSandbox (New): $RESPONSE"
         
-            # Extract sandbox_id from the response
-            SANDBOX_ID=$(echo "$RESPONSE" | jq -r '.sandbox_id')
-            if [[ "$SANDBOX_ID" == "null" ]]; then
-              echo "Error: CodeSandbox ID is null. Check the response for more details."
-              exit 1
-            fi
+          # Extract sandbox_id from the response
+          SANDBOX_ID=$(echo "$RESPONSE" | jq -r '.sandbox_id')
+          if [[ "$SANDBOX_ID" == "null" ]]; then
+            echo "Error: CodeSandbox ID is null. Check the response for more details."
+            exit 1
+          fi
         
-            echo "Generated Sandbox ID (New): $SANDBOX_ID"
-            echo "new_sandbox_id=$SANDBOX_ID" >> $GITHUB_ENV  # Use environment file
-        
+          echo "Generated Sandbox ID (New): $SANDBOX_ID"
+          echo "new_sandbox_id=$SANDBOX_ID" >> $GITHUB_ENV  # Use environment file
 
-      - name: Display CodeSandbox URLs
+      - name: Output SandBox IDs
         run: |
-          echo "View the previous CodeSandbox at: https://codesandbox.io/s/${{ steps.create_prev_sandbox.outputs.prev_sandbox_id }}"
-          echo "View the new CodeSandbox at: https://codesandbox.io/s/${{ steps.create_new_sandbox.outputs.new_sandbox_id }}"
+          echo "Previous Sandbox ID: $prev_sandbox_id"
+          echo "New Sandbox ID: $new_sandbox_id"
