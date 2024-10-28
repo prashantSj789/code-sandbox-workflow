@@ -18,12 +18,10 @@ jobs:
       - name: Get Previous File Contents
         id: prev_content
         run: |
-          # Create temporary files to store content
           echo "" > prev_index.html
           echo "" > prev_style.css
           echo "" > prev_app.js
 
-          # Function to get file content if it exists in the previous commit
           get_file_content() {
             if git cat-file -e "${{ github.event.before }}:$1" 2>/dev/null; then
               git show "${{ github.event.before }}:$1" > $2
@@ -32,7 +30,6 @@ jobs:
             fi
           }
 
-          # Retrieve contents of index.html, style.css, and app.js from the previous commit, if they exist
           get_file_content "src/index.html" "prev_index.html"
           get_file_content "src/style.css" "prev_style.css"
           get_file_content "src/app.js" "prev_app.js"
@@ -40,7 +37,6 @@ jobs:
       - name: Get New File Contents
         id: new_content
         run: |
-          # Create temporary files to store content
           cp src/index.html new_index.html || echo "" > new_index.html
           cp src/style.css new_style.css || echo "" > new_style.css
           cp src/app.js new_app.js || echo "" > new_app.js
@@ -48,42 +44,50 @@ jobs:
       - name: Create CodeSandbox with Previous Content
         id: create_prev_sandbox
         run: |
-          # Read and escape file content as JSON-safe strings for previous commit
           HTML_CONTENT=$(cat prev_index.html | sed 's/"/\\"/g' | tr '\n' '\\n')
           CSS_CONTENT=$(cat prev_style.css | sed 's/"/\\"/g' | tr '\n' '\\n')
           JS_CONTENT=$(cat prev_app.js | sed 's/"/\\"/g' | tr '\n' '\\n')
 
-          # Construct JSON payload manually for previous commit
           PAYLOAD=$(echo "{\"files\": {\"index.html\": {\"content\": \"$HTML_CONTENT\"}, \"style.css\": {\"content\": \"$CSS_CONTENT\"}, \"app.js\": {\"content\": \"$JS_CONTENT\"}}}")
 
-          # Send the payload to CodeSandbox
           RESPONSE=$(curl -s -X POST 'https://codesandbox.io/api/v1/sandboxes/define?json=1' \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD")
+
+          # Log the entire response for debugging
+          echo "Response from CodeSandbox (Previous): $RESPONSE"
           
-          # Extract sandbox_id from the response
           SANDBOX_ID=$(echo "$RESPONSE" | jq -r '.sandbox_id')
+          if [[ "$SANDBOX_ID" == "null" ]]; then
+            echo "Error: CodeSandbox ID is null. Check the response for more details."
+            exit 1
+          fi
+
           echo "Generated Sandbox ID (Previous): $SANDBOX_ID"
           echo "::set-output name=prev_sandbox_id::$SANDBOX_ID"
 
       - name: Create CodeSandbox with New Content
         id: create_new_sandbox
         run: |
-          # Read and escape file content as JSON-safe strings for current commit
           HTML_CONTENT=$(cat new_index.html | sed 's/"/\\"/g' | tr '\n' '\\n')
           CSS_CONTENT=$(cat new_style.css | sed 's/"/\\"/g' | tr '\n' '\\n')
           JS_CONTENT=$(cat new_app.js | sed 's/"/\\"/g' | tr '\n' '\\n')
 
-          # Construct JSON payload manually for current commit
           PAYLOAD=$(echo "{\"files\": {\"index.html\": {\"content\": \"$HTML_CONTENT\"}, \"style.css\": {\"content\": \"$CSS_CONTENT\"}, \"app.js\": {\"content\": \"$JS_CONTENT\"}}}")
 
-          # Send the payload to CodeSandbox
           RESPONSE=$(curl -s -X POST 'https://codesandbox.io/api/v1/sandboxes/define?json=1' \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD")
+
+          # Log the entire response for debugging
+          echo "Response from CodeSandbox (New): $RESPONSE"
           
-          # Extract sandbox_id from the response
           SANDBOX_ID=$(echo "$RESPONSE" | jq -r '.sandbox_id')
+          if [[ "$SANDBOX_ID" == "null" ]]; then
+            echo "Error: CodeSandbox ID is null. Check the response for more details."
+            exit 1
+          fi
+
           echo "Generated Sandbox ID (New): $SANDBOX_ID"
           echo "::set-output name=new_sandbox_id::$SANDBOX_ID"
 
