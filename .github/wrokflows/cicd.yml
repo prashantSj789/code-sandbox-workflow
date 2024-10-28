@@ -1,0 +1,83 @@
+name: Generate CodeSandbox for Previous and New Commits
+
+on:
+  push:
+    paths:
+      - 'src/app.js'
+      - 'src/index.html'
+      - 'src/style.css'
+
+jobs:
+  generate-codesandbox:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Get Previous File Contents
+        id: prev_content
+        run: |
+          # Retrieve the contents of index.html, style.css, and app.js from the previous commit
+          PREV_INDEX_HTML=$(git show "${{ github.event.before }}:src/index.html")
+          PREV_STYLE_CSS=$(git show "${{ github.event.before }}:src/style.css")
+          PREV_APP_JS=$(git show "${{ github.event.before }}:src/app.js")
+          
+          echo "::set-output name=prev_index_html::$PREV_INDEX_HTML"
+          echo "::set-output name=prev_style_css::$PREV_STYLE_CSS"
+          echo "::set-output name=prev_app_js::$PREV_APP_JS"
+
+      - name: Get New File Contents
+        id: new_content
+        run: |
+          # Retrieve the contents of index.html, style.css, and app.js from the current commit
+          NEW_INDEX_HTML=$(cat src/index.html)
+          NEW_STYLE_CSS=$(cat src/style.css)
+          NEW_APP_JS=$(cat src/app.js)
+
+          echo "::set-output name=new_index_html::$NEW_INDEX_HTML"
+          echo "::set-output name=new_style_css::$NEW_STYLE_CSS"
+          echo "::set-output name=new_app_js::$NEW_APP_JS"
+
+      - name: Create CodeSandbox with Previous Content
+        id: create_prev_sandbox
+        run: |
+          # Prepare JSON payload for previous commit files
+          PAYLOAD=$(jq -n --arg html "${{ steps.prev_content.outputs.prev_index_html }}" \
+                            --arg css "${{ steps.prev_content.outputs.prev_style_css }}" \
+                            --arg js "${{ steps.prev_content.outputs.prev_app_js }}" \
+                    '{ files: { "index.html": { content: $html }, "style.css": { content: $css }, "app.js": { content: $js } } }')
+
+          # Send the payload to CodeSandbox
+          RESPONSE=$(curl -s -X POST 'https://codesandbox.io/api/v1/sandboxes/define?json=1' \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+          
+          # Extract sandbox_id from the response
+          SANDBOX_ID=$(echo "$RESPONSE" | jq -r '.sandbox_id')
+          echo "Generated Sandbox ID (Previous): $SANDBOX_ID"
+          echo "::set-output name=prev_sandbox_id::$SANDBOX_ID"
+
+      - name: Create CodeSandbox with New Content
+        id: create_new_sandbox
+        run: |
+          # Prepare JSON payload for current commit files
+          PAYLOAD=$(jq -n --arg html "${{ steps.new_content.outputs.new_index_html }}" \
+                            --arg css "${{ steps.new_content.outputs.new_style_css }}" \
+                            --arg js "${{ steps.new_content.outputs.new_app_js }}" \
+                    '{ files: { "index.html": { content: $html }, "style.css": { content: $css }, "app.js": { content: $js } } }')
+
+          # Send the payload to CodeSandbox
+          RESPONSE=$(curl -s -X POST 'https://codesandbox.io/api/v1/sandboxes/define?json=1' \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+          
+          # Extract sandbox_id from the response
+          SANDBOX_ID=$(echo "$RESPONSE" | jq -r '.sandbox_id')
+          echo "Generated Sandbox ID (New): $SANDBOX_ID"
+          echo "::set-output name=new_sandbox_id::$SANDBOX_ID"
+
+      - name: Display CodeSandbox URLs
+        run: |
+          echo "View the previous CodeSandbox at: https://codesandbox.io/s/${{ steps.create_prev_sandbox.outputs.prev_sandbox_id }}"
+          echo "View the new CodeSandbox at: https://codesandbox.io/s/${{ steps.create_new_sandbox.outputs.new_sandbox_id }}"
