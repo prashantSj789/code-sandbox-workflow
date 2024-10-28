@@ -44,17 +44,22 @@ jobs:
       - name: Create CodeSandbox with Previous Content
         id: create_prev_sandbox
         run: |
-          HTML_CONTENT=$(cat prev_index.html | sed 's/"/\\"/g' | tr '\n' '\\n')
-          CSS_CONTENT=$(cat prev_style.css | sed 's/"/\\"/g' | tr '\n' '\\n')
-          JS_CONTENT=$(cat prev_app.js | sed 's/"/\\"/g' | tr '\n' '\\n')
+          HTML_CONTENT=$(cat prev_index.html | jq -Rs .)
+          CSS_CONTENT=$(cat prev_style.css | jq -Rs .)
+          JS_CONTENT=$(cat prev_app.js | jq -Rs .)
 
-          PAYLOAD=$(echo "{\"files\": {\"index.html\": {\"content\": \"$HTML_CONTENT\"}, \"style.css\": {\"content\": \"$CSS_CONTENT\"}, \"app.js\": {\"content\": \"$JS_CONTENT\"}}}")
+          PAYLOAD=$(jq -n \
+            --arg html "$HTML_CONTENT" \
+            --arg css "$CSS_CONTENT" \
+            --arg js "$JS_CONTENT" \
+            '{ files: { "index.html": { content: $html }, "style.css": { content: $css }, "app.js": { content: $js } } }')
+
+          echo "Payload for Previous Content: $PAYLOAD"
 
           RESPONSE=$(curl -s -X POST 'https://codesandbox.io/api/v1/sandboxes/define?json=1' \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD")
 
-          # Log the entire response for debugging
           echo "Response from CodeSandbox (Previous): $RESPONSE"
           
           SANDBOX_ID=$(echo "$RESPONSE" | jq -r '.sandbox_id')
@@ -69,17 +74,22 @@ jobs:
       - name: Create CodeSandbox with New Content
         id: create_new_sandbox
         run: |
-          HTML_CONTENT=$(cat new_index.html | sed 's/"/\\"/g' | tr '\n' '\\n')
-          CSS_CONTENT=$(cat new_style.css | sed 's/"/\\"/g' | tr '\n' '\\n')
-          JS_CONTENT=$(cat new_app.js | sed 's/"/\\"/g' | tr '\n' '\\n')
+          HTML_CONTENT=$(cat new_index.html | jq -Rs .)
+          CSS_CONTENT=$(cat new_style.css | jq -Rs .)
+          JS_CONTENT=$(cat new_app.js | jq -Rs .)
 
-          PAYLOAD=$(echo "{\"files\": {\"index.html\": {\"content\": \"$HTML_CONTENT\"}, \"style.css\": {\"content\": \"$CSS_CONTENT\"}, \"app.js\": {\"content\": \"$JS_CONTENT\"}}}")
+          PAYLOAD=$(jq -n \
+            --arg html "$HTML_CONTENT" \
+            --arg css "$CSS_CONTENT" \
+            --arg js "$JS_CONTENT" \
+            '{ files: { "index.html": { content: $html }, "style.css": { content: $css }, "app.js": { content: $js } } }')
+
+          echo "Payload for New Content: $PAYLOAD"
 
           RESPONSE=$(curl -s -X POST 'https://codesandbox.io/api/v1/sandboxes/define?json=1' \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD")
 
-          # Log the entire response for debugging
           echo "Response from CodeSandbox (New): $RESPONSE"
           
           SANDBOX_ID=$(echo "$RESPONSE" | jq -r '.sandbox_id')
